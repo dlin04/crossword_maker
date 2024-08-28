@@ -12,6 +12,6 @@ Instructions for the GUI on MacOS adopted from tutorial available at https://www
   make -j 16
 - run command:
   vim filename.cpp
-- clang++ filename.cpp -o gui_name `./wx-configs --cxxflags --libs`
+- clang++ -std=c++17 filename.cpp -o gui_name `./wx-config --cxxflags --libs`
 - run the following command to use the GUI:
   ./gui_name
