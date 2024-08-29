@@ -35,5 +35,5 @@
   ```
 - Run the executable to use the GUI:
   ```bash
-   ./gui_name
+   ./prog
   ```
