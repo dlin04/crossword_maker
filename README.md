@@ -1,17 +1,19 @@
-Instructions for the GUI on MacOS adopted from tutorial available at https://www.youtube.com/watch?v=BBv3FkFcPwI:
-- download wxWidgets (will show up in Downloads folder)
-- download CMakes (I did it from their official website instead of homebrew) and then in the terminal, run command:
-  sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install
-- check by run command:
-  cmake --version
-- change into wxWidgets directory
-- make folder
-- run command:
-  cmake ..
-- run command:
-  make -j 16
-- run command:
-  vim filename.cpp
-- clang++ -std=c++17 filename.cpp -o gui_name `./wx-config --cxxflags --libs`
-- run the following command to use the GUI:
-  ./gui_name
+# wxWidgets GUI Setup on macOS
+
+This guide will walk you through setting up a wxWidgets GUI on macOS. Follow the steps below to download and build wxWidgets, and compile your GUI application.
+
+## Prerequisites
+
+- [wxWidgets](https://www.wxwidgets.org/downloads/)
+- [CMake](https://cmake.org/download/)
+
+## Steps
+
+### 1. Download and Install CMake
+
+1. Download CMake from the [official website](https://cmake.org/download/).
+
+2. Open the terminal and run the following command to install CMake:
+
+   ```bash
+   sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install
