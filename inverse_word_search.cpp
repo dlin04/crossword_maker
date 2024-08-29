@@ -1,13 +1,105 @@
-#include <iostream>
-#include <fstream>
+#include <wx/wx.h>
 #include <vector>
-#include <algorithm>
+#include <sstream>
 #include <list>
 #include <cstring>
 
-using std::cerr; using std::endl; using std::ifstream;
-using std::ofstream; using std::string; using std::cout;
-using std::vector; using std::sort; using std::list;
+using std::cerr; using std::endl; using std::ifstream; using std::ofstream; using std::string; using std::cout;
+using std::vector; using std::sort; using std::list; using std::stringstream; using std::getline;
+
+class MyApp : public wxApp {
+public:
+    virtual bool OnInit();
+};
+
+class MyFrame : public wxFrame {
+public:
+    MyFrame(const wxString& title);
+
+private:
+    void OnRun(wxCommandEvent& event); // event handler
+
+    // input fields
+    wxTextCtrl* m_widthInput; wxTextCtrl* m_heightInput;
+    wxTextCtrl* m_includeWords; wxTextCtrl* m_excludeWords;
+    wxRadioBox* m_solutionType; wxTextCtrl* m_outputDisplay;
+
+    // helper functions
+    vector<string> ParseWords(wxTextCtrl* input);
+    string RunInverseWordSearch(int width, int height, vector<string>& include_words, 
+        vector<string>& exclude_words, bool find_all);
+};
+
+enum {
+    ID_Run = 1
+};
+
+wxIMPLEMENT_APP(MyApp);
+
+bool MyApp::OnInit() {
+    MyFrame* frame = new MyFrame("Inverse Word Search GUI");
+    frame->Show(true);
+    return true;
+}
+
+MyFrame::MyFrame(const wxString& title) : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(800, 700)) {
+    wxPanel* panel = new wxPanel(this, wxID_ANY); // panel to hold all controls
+    wxBoxSizer* vbox = new wxBoxSizer(wxVERTICAL);
+
+    // horizontal box, board dimensions input
+    wxBoxSizer* hbox1 = new wxBoxSizer(wxHORIZONTAL);
+    wxStaticText* st1 = new wxStaticText(panel, wxID_ANY, "Board Dimensions (Width x Height):");
+    hbox1->Add(st1, 0, wxRIGHT, 8);
+    m_widthInput = new wxTextCtrl(panel, wxID_ANY); // input field
+    m_heightInput = new wxTextCtrl(panel, wxID_ANY);
+    hbox1->Add(m_widthInput, 1);
+    hbox1->Add(m_heightInput, 1, wxLEFT, 5);
+    vbox->Add(hbox1, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 10);
+
+    // include words input
+    wxBoxSizer* hbox2 = new wxBoxSizer(wxHORIZONTAL);
+    wxStaticText* st2 = new wxStaticText(panel, wxID_ANY, "Include Words (one per line):");
+    hbox2->Add(st2, 0, wxRIGHT, 8);
+    m_includeWords = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+    hbox2->Add(m_includeWords, 1, wxEXPAND);
+    vbox->Add(hbox2, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 10);
+
+    // exclude words input
+    wxBoxSizer* hbox3 = new wxBoxSizer(wxHORIZONTAL);
+    wxStaticText* st3 = new wxStaticText(panel, wxID_ANY, "Exclude Words (one per line):");
+    hbox3->Add(st3, 0, wxRIGHT, 8);
+    m_excludeWords = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+    hbox3->Add(m_excludeWords, 1, wxEXPAND);
+    vbox->Add(hbox3, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 10);
+
+    wxString solutionChoices[] = { "One Solution", "All Solutions" };
+    m_solutionType = new wxRadioBox(panel, wxID_ANY, "Solution Type",
+        wxDefaultPosition, wxDefaultSize, WXSIZEOF(solutionChoices), solutionChoices,
+        1, wxRA_SPECIFY_ROWS);
+    vbox->Add(m_solutionType, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 10);
+
+    wxButton* btnRun = new wxButton(panel, ID_Run, "Run");
+    vbox->Add(btnRun, 0, wxALIGN_CENTER | wxTOP | wxBOTTOM, 10);
+
+    m_outputDisplay = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY);
+    vbox->Add(m_outputDisplay, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+
+    panel->SetSizer(vbox);
+
+    Bind(wxEVT_BUTTON, &MyFrame::OnRun, this, ID_Run);
+}
+
+vector<string> MyFrame::ParseWords(wxTextCtrl* input) {
+    vector<string> words;
+    stringstream ss(input->GetValue().ToStdString());
+    string line;
+    while (getline(ss, line))
+    {
+        if (!line.empty())
+            words.push_back(line);
+    }
+    return words;
+}
 
 /* generates a new board each time a word is inserted
 otherwise, the recursion will continue to work off of the old
@@ -118,11 +210,10 @@ bool no_excludes(const vector<vector<char> >& board,
 void insert_word(list<vector<vector<char> > >& all_solutions, vector<vector<char> >&
                  board, const vector<string>& include_words, unsigned int word_index,
                  const vector<string>& exclude_words, const vector<vector<int> >&
-                 all_directions, bool find_all){
+                 all_directions){
     
     if(word_index == include_words.size()){
         all_solutions.push_back(board);
-        if(!find_all){ return; }
     }
 
     else{
@@ -137,10 +228,8 @@ void insert_word(list<vector<vector<char> > >& all_solutions, vector<vector<char
                 if(board[row][col] == '*' || board[row][col] == include_words[word_index][0]){
                     // checks all eight directions
                     for(unsigned int i = 0; i < all_directions.size(); i++){
-                        if(valid_insertion(board, include_words[word_index],
-                                           col, row, all_directions[i]) ||
-                           insert_along(board, include_words[word_index],
-                                           col, row, all_directions[i])){
+                        if(valid_insertion(board, include_words[word_index], col, row, all_directions[i]) ||
+                           insert_along(board, include_words[word_index], col, row, all_directions[i])){
                             
                             vector<vector<char> > ins_board = new_board(board,
                                     include_words[word_index], col, row, all_directions[i]);
@@ -150,10 +239,9 @@ void insert_word(list<vector<vector<char> > >& all_solutions, vector<vector<char
                                 // now checking insertions along empty spaces for next word
                                 int next = word_index + 1;
                                 insert_word(all_solutions, ins_board, include_words,
-                                            next, exclude_words, all_directions, find_all);
+                                            next, exclude_words, all_directions);
                             }
                         }
-                        
                     }
                 }
             }
@@ -221,81 +309,61 @@ void remove_empty(list<vector<vector<char> > >& all_solutions){
     }
 }
 
-/* helper function to print out the solutions. takes a bool
- to know whether to print one or all solutions. all solutions
- are always found and when one solution is requested, the first
- one is outputted */
-void output(list<vector<vector<char> > >& all_solutions,
-            ofstream &output_file, bool out_all){
-    list<vector<vector<char> > >::iterator it;
+// helper function to execute algorithm when Run is clicked
+string MyFrame::RunInverseWordSearch(int width, int height, vector<string>& include_words, 
+    vector<string>& exclude_words, bool find_all) {
+    vector<vector<char>> board(height, vector<char>(width, '*'));
+    list<vector<vector<char>>> all_solutions;
     
-    if(out_all) { output_file << all_solutions.size() << " solution(s)" << endl; }
-    for(it = all_solutions.begin(); it != all_solutions.end(); it++){
-        output_file << "Board:" << endl;
-        for(unsigned int row = 0; row < (*it).size(); row++){
-            output_file << "  ";
-            for(unsigned int col = 0; col < (*it)[row].size(); col++){
-                output_file << (*it)[row][col];
-            }
-            output_file << endl;
-        }
-        if(!out_all){ break; }
-    }
-}
+    vector<vector<int>> directions = { {1, 0}, { -1, 0 }, { 0, 1 }, { 0, -1 },
+        {1, 1}, {1, -1}, { -1, 1 }, { -1, -1 } };
 
-int main(int argc, const char * argv[]) {
-    if(argc != 4){
-        cerr << "Usage: " << argv[0] <<
-        "puzzle_file output_file num_solutions" << endl;
-        exit(1);
-    }
-    ifstream puzzle_info(argv[1]);
-    ofstream out_file(argv[2]);
-    if(!puzzle_info.good()){
-        cerr << "Can't open " << argv[1] << " to read." << endl;
-        exit(1);
-    }
-    if(!out_file.good()){
-        cerr << "Can't open " << argv[2] << " to write." << endl;
-        exit(1);
-    }
-    
-    int width, height;
-    puzzle_info >> width >> height;
-    
-    string word; char sign;
-    vector<string> include_words;
-    vector<string> exclude_words;
-    while(puzzle_info >> sign){
-        puzzle_info >> word;
-        if(sign == '+'){ include_words.push_back(word); }
-        else if(sign == '-'){ exclude_words.push_back(word); }
-    }
-    vector<vector<char> > board(height, vector<char>(width, '*'));
-    list<vector<vector<char> > > all_solutions;
-    
-    // vector of all directions to check, instead of making 8 if statements
-    // only the bounds are checked through checking the vector
-    vector<vector<int> > directions;
-    directions.push_back(vector<int>{1, 0});   // left to right
-    directions.push_back(vector<int>{-1, 0});  // right to left
-    directions.push_back(vector<int>{0,1});    // bottom to top
-    directions.push_back(vector<int>{0, -1});  // top to bottom
-    directions.push_back(vector<int>{1, 1});   // towards top right
-    directions.push_back(vector<int>{1, -1});  // towards bottom right
-    directions.push_back(vector<int>{-1, 1});  // towards top left
-    directions.push_back(vector<int>{-1, -1}); // towards bottom left
-    bool find_all = strcmp(argv[3], "all_solutions");
-    insert_word(all_solutions, board, include_words, 0,
-                exclude_words, directions, find_all);
+    insert_word(all_solutions, board, include_words, 0, exclude_words, directions);
     fill_empty(all_solutions, exclude_words, directions);
     remove_empty(all_solutions);
-    all_solutions.sort(); all_solutions.unique();
-    if(all_solutions.size() == 0){ out_file << "No solutions"; }
-    else if(strcmp(argv[3], "one_solution") == 0)
-        { output(all_solutions, out_file, false); }
-    else if(strcmp(argv[3], "all_solutions") == 0)
-        { output(all_solutions, out_file, true); }
-    
-    return 0;
+    all_solutions.sort();
+    all_solutions.unique();
+
+    stringstream result;
+    int count = 1;
+    if(all_solutions.size() == 0){
+        result << "No possible boards" << endl;
+    }
+    else if (find_all) {
+        result << "Total solutions: " << all_solutions.size() << endl << endl;
+    }
+    for (const auto& solution : all_solutions) {
+        if(find_all){
+            result << "Board: " << count << endl;
+            count++;
+        }
+        for (const auto& row : solution) {
+            for (char c : row) {
+                result << c << " ";
+            }
+            result << "\n";
+        }
+        result << "\n";
+        if(!find_all){
+            break;
+        }
+    }
+
+    return result.str();
+}
+
+// function when Run is clicked
+void MyFrame::OnRun(wxCommandEvent& event) {
+    long width, height;
+    if (!m_widthInput->GetValue().ToLong(&width) || !m_heightInput->GetValue().ToLong(&height)) {
+        wxMessageBox("Please enter valid numbers for the board dimensions.", "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+
+    vector<string> include_words = ParseWords(m_includeWords);
+    vector<string> exclude_words = ParseWords(m_excludeWords);
+    bool find_all = m_solutionType->GetSelection() == 1;
+
+    string result = RunInverseWordSearch(width, height, include_words, exclude_words, find_all);
+    m_outputDisplay->SetValue(result);
 }
